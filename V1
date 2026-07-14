@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Energy Situation Analysis Framework</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --mp-dark: #10395c;
+    --mp-darker: #081530;
+    --mp-teal: #078b95;
+    --mp-orange: #f8a93a;
+    --mp-lightblue: #61a0d6;
+    --mp-lightgrey: #e8eef2;
+    --mp-cream: #f9f6ee;
+    --mp-grey: #8c8c8c;
+    --red: #c0392b;
+    --green: #1e8e5a;
+    --card-radius: 10px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Figtree', 'Segoe UI', -apple-system, sans-serif;
+    background: #f2f5f8;
+    color: var(--mp-dark);
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ============ SIDEBAR ============ */
+  .sidebar {
+    width: 235px;
+    min-width: 235px;
+    background: linear-gradient(180deg, var(--mp-dark) 0%, var(--mp-darker) 100%);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+  }
+  .logo { padding: 22px 20px 18px; border-bottom: 1px solid rgba(255,255,255,0.12); }
+  .logo .brand { font-weight: 800; letter-spacing: 1px; font-size: 15px; }
+  .logo .brand span { color: var(--mp-teal); }
+  .logo .sub { font-size: 10px; color: rgba(255,255,255,0.55); margin-top: 3px; text-transform: uppercase; letter-spacing: 1.2px; }
+  .nav { flex: 1; padding: 14px 0; overflow-y: auto; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 20px; font-size: 13px;
+    color: rgba(255,255,255,0.72);
+    cursor: pointer; border-left: 3px solid transparent;
+    transition: background 0.15s;
+    user-select: none;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
+  .nav-item.active {
+    background: rgba(7,139,149,0.22);
+    border-left-color: var(--mp-teal);
+    color: #fff; font-weight: 600;
+  }
+  .nav-item .ico { width: 18px; text-align: center; font-size: 14px; }
+  .nav-section-label {
+    padding: 16px 20px 6px; font-size: 10px; text-transform: uppercase;
+    letter-spacing: 1.4px; color: rgba(255,255,255,0.38);
+  }
+  .sidebar-footer {
+    padding: 14px 20px; font-size: 10px; color: rgba(255,255,255,0.4);
+    border-top: 1px solid rgba(255,255,255,0.12);
+    line-height: 1.5;
+  }
+
+  /* ============ MAIN ============ */
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .topbar {
+    background: #fff; padding: 14px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid #dde5ec;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .topbar h1 { font-size: 17px; font-weight: 700; color: var(--mp-dark); }
+  .topbar .meta { font-size: 11px; color: var(--mp-grey); text-align: right; line-height: 1.5; }
+  .topbar .meta b { color: var(--mp-teal); }
+
+  .status-banner {
+    background: linear-gradient(90deg, var(--mp-dark), #14507e);
+    color: #fff; padding: 10px 28px; font-size: 12.5px;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .status-banner .pill {
+    background: var(--mp-orange); color: var(--mp-darker);
+    font-weight: 700; font-size: 10px; text-transform: uppercase;
+    letter-spacing: 1px; padding: 3px 10px; border-radius: 20px;
+  }
+
+  .content { padding: 24px 28px 60px; flex: 1; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: none;} }
+
+  h2.section-title {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1.6px;
+    color: var(--mp-teal); font-weight: 700; margin: 26px 0 12px;
+  }
+  h2.section-title:first-child { margin-top: 0; }
+  .lede { font-size: 13px; color: #3d5a75; max-width: 960px; margin-bottom: 16px; line-height: 1.65; }
+
+  /* ============ CARDS / GRID ============ */
+  .grid { display: grid; gap: 14px; }
+  .g6 { grid-template-columns: repeat(6, 1fr); }
+  .g5 { grid-template-columns: repeat(5, 1fr); }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g2 { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 1250px) { .g6, .g5 { grid-template-columns: repeat(3, 1fr);} .g4 { grid-template-columns: repeat(2, 1fr);} }
+  @media (max-width: 860px) {
+    .g6, .g5, .g4, .g3, .g2 { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+  }
+
+  .card {
+    background: #fff; border-radius: var(--card-radius);
+    padding: 16px 18px;
+    box-shadow: 0 1px 3px rgba(16,57,92,0.08);
+    border: 1px solid #e3eaf0;
+  }
+  .kpi .label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 1px; color: var(--mp-grey); font-weight: 600; }
+  .kpi .value { font-size: 22px; font-weight: 800; color: var(--mp-dark); margin: 6px 0 2px; }
+  .kpi .value.teal { color: var(--mp-teal); }
+  .kpi .value.orange { color: #d98a13; }
+  .kpi .value.red { color: var(--red); }
+  .kpi .delta { font-size: 11.5px; color: var(--mp-grey); line-height: 1.45; }
+  .kpi .delta .up { color: var(--red); font-weight: 700; }
+  .kpi .delta .down { color: var(--green); font-weight: 700; }
+
+  .card h3 { font-size: 14.5px; font-weight: 700; color: var(--mp-dark); margin-bottom: 8px; }
+  .card p { font-size: 12.5px; line-height: 1.6; color: #3d5a75; }
+  .card .src { font-size: 10px; color: var(--mp-grey); margin-top: 10px; display: block; border-top: 1px dashed #e0e8ef; padding-top: 7px; }
+
+  /* method cards */
+  .method-card { position: relative; overflow: hidden; }
+  .method-card .m-num {
+    position: absolute; top: -8px; right: 6px; font-size: 64px; font-weight: 800;
+    color: var(--mp-lightgrey); z-index: 0; line-height: 1;
+  }
+  .method-card > * { position: relative; z-index: 1; }
+  .method-tag {
+    display: inline-block; font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; padding: 3px 9px; border-radius: 4px; margin-bottom: 8px;
+    background: rgba(7,139,149,0.12); color: var(--mp-teal);
+  }
+  .sm-step { display: flex; gap: 8px; margin-top: 8px; font-size: 12px; line-height: 1.55; color: #3d5a75; }
+  .sm-step .sm-key {
+    min-width: 96px; font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--mp-teal); padding-top: 2px;
+  }
+  .signal-row {
+    display: flex; align-items: center; gap: 8px; margin-top: 12px;
+    background: var(--mp-lightgrey); border-radius: 6px; padding: 9px 12px;
+  }
+  .signal-row .sig-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--mp-grey); font-weight: 700; }
+  .signal-row .sig-val { font-size: 12.5px; font-weight: 700; }
+  .sig-bear { color: var(--red); } .sig-neut { color: #d98a13; } .sig-bull { color: var(--green); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; padding: 8px 10px; background: var(--mp-lightgrey); color: var(--mp-dark); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.8px; }
+  td { padding: 8px 10px; border-bottom: 1px solid #edf2f6; color: #34506b; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td b { color: var(--mp-dark); }
+
+  /* pipeline */
+  .pipeline { display: flex; gap: 0; align-items: stretch; flex-wrap: wrap; }
+  .pipe-step {
+    flex: 1; min-width: 130px; background: #fff; border: 1px solid #e3eaf0;
+    padding: 14px 12px; position: relative; text-align: center;
+  }
+  .pipe-step:first-child { border-radius: 10px 0 0 10px; }
+  .pipe-step:last-child { border-radius: 0 10px 10px 0; }
+  .pipe-step .p-num {
+    width: 26px; height: 26px; border-radius: 50%; background: var(--mp-teal); color: #fff;
+    font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 8px;
+  }
+  .pipe-step h4 { font-size: 12px; font-weight: 700; color: var(--mp-dark); margin-bottom: 4px; }
+  .pipe-step p { font-size: 10.5px; color: #5a748c; line-height: 1.45; }
+  .pipe-step::after {
+    content: '→'; position: absolute; right: -8px; top: 50%; transform: translateY(-50%);
+    color: var(--mp-teal); font-weight: 800; z-index: 2; background: transparent;
+  }
+  .pipe-step:last-child::after { display: none; }
+
+  /* timeline */
+  .timeline { position: relative; padding-left: 22px; }
+  .timeline::before { content: ''; position: absolute; left: 6px; top: 4px; bottom: 4px; width: 2px; background: #d6e0e9; }
+  .t-item { position: relative; padding: 0 0 16px 12px; }
+  .t-item::before {
+    content: ''; position: absolute; left: -21px; top: 4px; width: 12px; height: 12px;
+    border-radius: 50%; background: var(--mp-teal); border: 2.5px solid #fff;
+    box-shadow: 0 0 0 2px var(--mp-teal);
+  }
+  .t-item.red::before { background: var(--red); box-shadow: 0 0 0 2px var(--red); }
+  .t-item.orange::before { background: var(--mp-orange); box-shadow: 0 0 0 2px var(--mp-orange); }
+  .t-item .t-date { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--mp-teal); }
+  .t-item.red .t-date { color: var(--red); }
+  .t-item.orange .t-date { color: #d98a13; }
+  .t-item .t-text { font-size: 12.5px; color: #34506b; line-height: 1.55; margin-top: 2px; }
+
+  .chart-box { position: relative; height: 300px; }
+  .chart-box.tall { height: 340px; }
+
+  /* scenario cards */
+  .scen { border-top: 4px solid var(--mp-teal); }
+  .scen.base { border-top-color: var(--mp-orange); }
+  .scen.bear { border-top-color: var(--red); }
+  .scen .prob { font-size: 30px; font-weight: 800; }
+  .scen.bull .prob { color: var(--green); }
+  .scen.base .prob { color: #d98a13; }
+  .scen.bear .prob { color: var(--red); }
+  .scen ul { margin: 8px 0 0 16px; font-size: 12px; color: #3d5a75; line-height: 1.65; }
+
+  /* sliders */
+  .ctl-row { display: flex; align-items: center; gap: 12px; margin: 10px 0; font-size: 12px; }
+  .ctl-row label { width: 220px; font-weight: 600; color: var(--mp-dark); }
+  .ctl-row input[type=range] { flex: 1; accent-color: var(--mp-teal); }
+  .ctl-row .ctl-val { width: 52px; text-align: right; font-weight: 700; color: var(--mp-teal); }
+
+  .disclaimer {
+    background: var(--mp-cream); border: 1px solid #e8dfc8; border-radius: 8px;
+    padding: 12px 16px; font-size: 11.5px; color: #6b5d3a; line-height: 1.6; margin-top: 22px;
+  }
+  .footnote { font-size: 10.5px; color: var(--mp-grey); margin-top: 14px; line-height: 1.6; }
+  .def-block { margin-top: 10px; border-top: 2px solid var(--mp-lightgrey); padding-top: 9px; }
+  .def-row { display: flex; gap: 8px; margin-top: 6px; font-size: 11.5px; line-height: 1.55; color: #3d5a75; }
+  .def-row .def-key {
+    min-width: 92px; font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--mp-teal); padding-top: 2px;
+  }
+  .def-row code {
+    font-family: 'Consolas', 'Menlo', monospace; font-size: 11px;
+    background: var(--mp-lightgrey); padding: 1px 5px; border-radius: 4px; color: var(--mp-dark);
+  }
+  .skill-panel { margin-top: 10px; background: #f7fafc; border: 1px solid #e3eaf0; border-radius: 8px; padding: 10px 12px 8px; }
+  .skill-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+  .skill-head .sk-label { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--mp-grey); }
+  .skill-head .sk-val { font-size: 19px; font-weight: 800; }
+  .sk-strong { color: var(--green); } .sk-mid { color: #d98a13; } .sk-weak { color: var(--red); }
+  .skill-box { position: relative; height: 110px; }
+  .mt { margin-top: 14px; }
+  .badge { display: inline-block; font-size: 9.5px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.7px; }
+  .badge.high { background: rgba(192,57,43,0.12); color: var(--red); }
+  .badge.med { background: rgba(248,169,58,0.18); color: #b57310; }
+  .badge.low { background: rgba(30,142,90,0.12); color: var(--green); }
+</style>
+</head>
+<body>
+
+<!-- ================= SIDEBAR ================= -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="brand">ENERGY<span>&nbsp;LAB</span></div>
+    <div class="sub">Situation Analysis Framework</div>
+  </div>
+  <nav class="nav">
+    <div class="nav-section-label">Framework</div>
+    <div class="nav-item active" data-tab="overview"><span class="ico">◈</span> Overview &amp; Method</div>
+    <div class="nav-item" data-tab="methods"><span class="ico">⚗</span> Five Scientific Methods</div>
+    <div class="nav-item" data-tab="engine"><span class="ico">↗</span> Scenario Engine</div>
+    <div class="nav-item" data-tab="monitors"><span class="ico">▦</span> Early-Warning Monitors</div>
+    <div class="nav-section-label">Application</div>
+    <div class="nav-item" data-tab="casestudy"><span class="ico">◎</span> Case Study: Iran 2026</div>
+    <div class="nav-item" data-tab="sources"><span class="ico">✦</span> Sources &amp; Data Notes</div>
+  </nav>
+  <div class="sidebar-footer">
+    Universal framework, crisis-agnostic.<br>
+    Scenario analysis, not financial advice.<br>
+    Reference data as of 9 July 2026.
+  </div>
+</aside>
+
+<!-- ================= MAIN ================= -->
+<div class="main">
+  <div class="topbar">
+    <h1 id="page-title">Overview &amp; Method</h1>
+    <div class="meta">Applicable to any energy supply situation<br>Validation case: <b>2026 Iran war / Strait of Hormuz</b></div>
+  </div>
+  <div class="status-banner">
+    <span class="pill">Purpose</span>
+    <span>A <b>crisis-agnostic analytical instrument</b>: five scientific methods, a standing indicator set, an early-warning monitor and a probabilistic scenario engine that can be applied to any energy supply disruption, whether geopolitical (chokepoints, sanctions, war), technical (infrastructure failure, cyber), or natural (weather, disaster). The 2026 Iran war serves as the empirical validation case.</span>
+  </div>
+
+  <div class="content">
+
+    <!-- ============================================================ OVERVIEW -->
+    <section class="tab-panel active" id="tab-overview">
+
+      <h2 class="section-title">The Scientific Workflow</h2>
+      <p class="lede">
+        The framework follows the scientific method as a repeatable analytical cycle. Every energy situation, regardless of its trigger, is processed through the same six steps. This enforces discipline: hypotheses are stated before data are interpreted, predictions are made before outcomes are known, and probabilities are updated against pre-specified triggers rather than headlines.
+      </p>
+      <div class="pipeline">
+        <div class="pipe-step"><div class="p-num">1</div><h4>Observe</h4><p>Collect standardized indicators: flows, prices, inventories, transit data, policy events.</p></div>
+        <div class="pipe-step"><div class="p-num">2</div><h4>Hypothesize</h4><p>State a falsifiable proposition, e.g. "the disruption removes X% of supply for Y weeks".</p></div>
+        <div class="pipe-step"><div class="p-num">3</div><h4>Model</h4><p>Apply the five methods independently; each produces its own estimate and confidence.</p></div>
+        <div class="pipe-step"><div class="p-num">4</div><h4>Predict</h4><p>Publish scenario paths with explicit probabilities and a defined forecast horizon.</p></div>
+        <div class="pipe-step"><div class="p-num">5</div><h4>Test</h4><p>Compare realized outcomes to predictions at fixed checkpoints; measure forecast error.</p></div>
+        <div class="pipe-step"><div class="p-num">6</div><h4>Update</h4><p>Revise probabilities Bayesian-style when pre-agreed triggers fire; document each revision.</p></div>
+      </div>
+
+      <h2 class="section-title">Universal Indicator Set: Definitions, 5-Year Series &amp; Predictive Skill (Jul 2021 – Jul 2026)</h2>
+      <p class="lede">
+        Nine standardized indicators describe any energy situation: six core indicators plus three extended indicators added because real public data exist for them. When a new situation begins, only the values change, never the structure. The five-year window covers five distinct regimes: the post-COVID recovery and 2021 gas squeeze, the 2022 Russia-Ukraine energy crisis, the 2023 disinflation, the 2024 Red Sea disruption and brief June 2025 Israel-Iran conflict, and the 2026 Iran war. <b>Data status is marked per indicator.</b> Six indicators are built from real published series: the Price Deviation Index (EIA/FRED Brent), the Inflation Impulse (BLS CPI and Eurostat HICP energy components), the Redundancy Ratio (EIA STEO spare capacity, approximated), the Gas Price Deviation Index (ICE TTF benchmark), the Geopolitical Risk Index (Caldara-Iacoviello GPR, a public academic series), and the EU Gas Storage Deviation (GIE AGSI+ transparency platform). Three indicators require commercial feeds and are therefore defined but not plotted: Supply at Risk, Logistics Stress, and Risk Premium. The framework does not display illustrative series; their charts and skill panels activate once real feeds supply the inputs.
+        <b>The predictive skill panels are computed backtests and are shown only for the real-data indicators:</b> each applies a stated mechanical decision rule to its series and measures the rolling 12-month share of correct one-month-ahead directional calls against a stated target (Brent or TTF), with 50% = no skill. The three commercial-feed indicators carry no skill panel, because a backtest on illustrative inputs would not be a meaningful measurement; their panels will be activated once real feeds replace the inputs. Notes: real-data series are compiled from published figures rather than a live API; the US CPI has a gap in October&ndash;November 2025 (lapse in appropriations); values there and for the most recent months pending release are interpolated estimates, and GPR/TTF/storage values are transcribed to monthly precision.
+      </p>
+      <div class="grid g3">
+        <div class="card">
+          <h3>Price Deviation Index <span class="badge low">Real data</span></h3>
+          <div class="chart-box" style="height:200px;"><canvas id="hist-pdi"></canvas></div>
+          <span class="src">Brent monthly averages (EIA STEO/FRED, compiled from published figures) ÷ pre-2026-event baseline ($71) × 100. Five regimes visible: the 2021 recovery, the 2022 Russia shock (peak ~166 in June 2022), the 2023 disinflation, the soft 2024&ndash;25 drift, and the 2026 shock (April monthly average $117, index ~165; daily peak $138 on 7 April, index ~194) with retracement to ~$70 by 1 July and a renewed jump toward $78 on the 7&ndash;8 July re-escalation.</span>
+          <div class="skill-panel">
+            <div class="skill-head"><span class="sk-label">Predictive skill · computed backtest, overall hit rate</span><span class="sk-val" id="skval-pdi">&ndash;</span></div>
+            <div class="skill-box"><canvas id="skill-pdi"></canvas></div>
+            <span class="src">Computed on the real series. Rule: if the index moved ≥3 points over the past two months, predict the same direction for next month's Brent. Bars show the rolling 12-month share of correct calls; 50% dashed line = no skill. Momentum is largely coincident with price, so skill is modest and concentrated in trending crisis phases.</span>
+          </div>
+          <div class="def-block">
+            <div class="def-row"><span class="def-key">Definition</span><span><code>PDI(t) = P(t) / P(baseline) × 100</code>, where P(t) is the monthly average benchmark price (Brent front-month for oil situations; TTF or JKM for gas situations) and P(baseline) is the 30-trading-day average immediately preceding the event trigger date. Rebasing to 100 makes shocks comparable across commodities and episodes.</span></div>
+            <div class="def-row"><span class="def-key">Interpretation</span><span>100 = no deviation. 100&ndash;110 is within normal volatility; &gt;110 indicates a material shock; &gt;140 a severe shock. The peak value defines the amplitude of a crisis; the decay speed measures normalization.</span></div>
+            <div class="def-row"><span class="def-key">Data sources</span><span>ICE / EIA daily settlement prices, aggregated to monthly averages.</span></div>
+            <div class="def-row"><span class="def-key">Frequency</span><span>Daily during active situations; monthly otherwise.</span></div>
+            <div class="def-row"><span class="def-key">Iran 2026</span><span>Baseline $71; April monthly average $117 (index ~165, highest monthly average since June 2022 per EIA); daily peak $138 on 7 April (index ~194); fell below $70 on 1 July, then jumped ~5% to ~$78 on the 7&ndash;8 July re-escalation (index ~110).</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Supply at Risk (% of Global Supply) <span class="badge med">Commercial feed required · no chart</span></h3>
+          <p style="background:#f7fafc; border:1px dashed #c9d6e2; border-radius:8px; padding:14px; font-size:12px; color:#5a748c;">No series is plotted for this indicator; the framework does not display illustrative reconstructions. <b>What a live feed requires:</b> (1) a Kpler or Vortexa API subscription for crude and product flows by origin, destination and status (commercial license, typically a five-figure annual cost); (2) a documented disruption ruleset defining when a volume counts as "at risk" (blocked, embargoed, damaged, or under enforced threat); (3) a monthly aggregation job dividing tagged volumes by IEA/EIA global supply. Lower-fidelity free alternative: EIA's published disruption estimates, quarterly rather than weekly. Reference points from reporting: 2022 Russia embargo period ~3&ndash;5% exposed; 2026 Hormuz closure ~20% at peak.</p>
+          <div class="def-block">
+            <div class="def-row"><span class="def-key">Definition</span><span><code>SaR(t) = V(disrupted, t) / V(global, t) × 100</code>, where the numerator is the volume exposed to active disruption (blocked, embargoed, damaged, or under credible threat with demonstrated enforcement) and the denominator is total global supply of the commodity.</span></div>
+            <div class="def-row"><span class="def-key">Interpretation</span><span>&lt;2% is background noise; 2&ndash;5% a regional event; 5&ndash;15% a major event; &gt;15% a systemic event requiring full framework activation. The historical maximum is ~20% (Hormuz 2026).</span></div>
+            <div class="def-row"><span class="def-key">Data sources</span><span>IEA / EIA supply balances, tanker tracking (Kpler), official export statistics of affected producers.</span></div>
+            <div class="def-row"><span class="def-key">Frequency</span><span>Weekly; re-estimated immediately on trigger events.</span></div>
+            <div class="def-row"><span class="def-key">Iran 2026</span><span>~20% of global oil trade plus ~20% of LNG exposed via Hormuz; 10&ndash;14 mb/d of exports stranded at peak.</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Redundancy Ratio <span class="badge low">Real data (approx.)</span></h3>
+          <div class="chart-box" style="height:200px;"><canvas id="hist-rr"></canvas></div>
+          <span class="src">Bypass + spare capacity ÷ volume at risk, capped at 1.0. Approximated from EIA STEO spare-capacity assessments and documented disruption volumes: OPEC spare fell to ~2.5&ndash;3 mb/d against ~3&ndash;5 mb/d of Russian exports at risk in 2022 (ratio ~0.6&ndash;0.7), recovered through 2023&ndash;25, and collapsed to ~0.13 in March 2026 (~2.6 mb/d bypass vs. ~20 mb/d at risk).</span>
+          <div class="skill-panel">
+            <div class="skill-head"><span class="sk-label">Predictive skill · computed backtest, overall hit rate</span><span class="sk-val" id="skval-rr">&ndash;</span></div>
+            <div class="skill-box"><canvas id="skill-rr"></canvas></div>
+            <span class="src">Computed on the real-approximation series. Rule: signals only when the ratio is below 0.9 (a live constraint); deteriorating ratio predicts Brent up next month, recovering ratio predicts down. The computed hit rate is modest and rests on very few signal months (the ratio binds only during 2022 and 2026), so the sample is too small for strong claims. The ratio's analytical value is amplitude prediction (how severe a shock becomes), which a monthly directional test does not fully capture.</span>
+          </div>
+          <div class="def-block">
+            <div class="def-row"><span class="def-key">Definition</span><span><code>RR(t) = (C(bypass) + C(spare)) / V(at risk)</code>. Bypass capacity covers alternative routes usable within 30 days (pipelines, rerouting, alternative ports); spare capacity follows the IEA definition: production activatable within 30 days and sustainable for 90 days. Displayed capped at 1.0.</span></div>
+            <div class="def-row"><span class="def-key">Interpretation</span><span>≥1.0 means the disruption is fully substitutable and price effects stay contained; 0.5&ndash;1.0 partial substitution; &lt;0.3 structural shortage, in which most of the Supply at Risk converts into an actual physical deficit. RR is the single best predictor of a crisis's price amplitude.</span></div>
+            <div class="def-row"><span class="def-key">Data sources</span><span>EIA pipeline capacity assessments, OPEC / IEA spare capacity estimates, shipping route feasibility analysis.</span></div>
+            <div class="def-row"><span class="def-key">Frequency</span><span>Monthly baseline; re-estimated at event onset.</span></div>
+            <div class="def-row"><span class="def-key">Iran 2026</span><span>~0.13 at peak: only ~2.6 mb/d pipeline bypass (Saudi East-West, UAE Fujairah) against ~20 mb/d at risk. This is why Hormuz 2026 was far more severe than the Red Sea 2024 episode despite similar headline attention.</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Logistics Stress Index <span class="badge med">Commercial feed required · no chart</span></h3>
+          <p style="background:#f7fafc; border:1px dashed #c9d6e2; border-radius:8px; padding:14px; font-size:12px; color:#5a748c;">No series is plotted for this indicator; the framework does not display illustrative reconstructions. <b>What a live feed requires:</b> (1) an AIS vessel-tracking API (Windward, Kpler Marine or MarineTraffic) for corridor transit counts and dwell/stranding detection; (2) Lloyd's List Intelligence for verified stranded-vessel and casualty counts; (3) war-risk insurance premia, which have no API and must be transcribed monthly from broker reporting (Marsh, Gallagher) and trade press. Components (1) and (2) are commercial subscriptions; component (3) is manual effort. Reference points from reporting: peak stress at the March 2026 closure with 600+ vessels stranded and transits down to 5&ndash;11/day.</p>
+          <div class="def-block">
+            <div class="def-row"><span class="def-key">Definition</span><span>Composite index scaled 0&ndash;100: <code>LSI = 0.4 × transit deviation + 0.3 × stranded vessels + 0.3 × insurance premium</code>. Transit deviation is measured against the trailing 30-day mean of the affected corridor; the stranded-vessel count and war-risk insurance premium are normalized to their worst observation in the sample (= 100).</span></div>
+            <div class="def-row"><span class="def-key">Interpretation</span><span>&lt;15 normal operations; 15&ndash;40 elevated friction (higher freight and insurance costs); 40&ndash;70 disrupted (rerouting, delays, selective transit); &gt;70 acute (corridor effectively unusable). LSI typically leads price at turning points because vessels react before settlement prices do.</span></div>
+            <div class="def-row"><span class="def-key">Data sources</span><span>AIS vessel tracking (Kpler, Windward), Lloyd's List Intelligence stranded-vessel counts, marine war-risk insurance market reporting, JMIC route notices.</span></div>
+            <div class="def-row"><span class="def-key">Frequency</span><span>Daily during active situations; weekly otherwise.</span></div>
+            <div class="def-row"><span class="def-key">Iran 2026</span><span>Peak 100 in March: 600+ vessels stranded (incl. 325 tankers), transits down to 5&ndash;11/day, a 230-tanker loading backlog; currently ~40 as traffic recovers under the MoU.</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Risk Premium ($/bbl equivalent) <span class="badge med">Commercial feed required · no chart</span></h3>
+          <p style="background:#f7fafc; border:1px dashed #c9d6e2; border-radius:8px; padding:14px; font-size:12px; color:#5a748c;">No series is plotted for this indicator; the framework does not display illustrative reconstructions. <b>What a live feed requires:</b> this one is built, not bought. (1) A maintained Method 1 fundamentals model producing a fair-value price from free public inputs (EIA/IEA inventories, spare capacity, demand estimates); (2) daily Brent settlements (free via EIA/FRED); (3) the premium is then simply spot minus model output. The cost is analyst effort to build and recalibrate the model, roughly a small spreadsheet-to-Python project, plus periodic cross-checks against published bank decompositions. Reference points from reporting: ~$14/bbl at the 2026 outbreak (Goldman Sachs), compressed to ~$5&ndash;10 post-MoU.</p>
+          <div class="def-block">
+            <div class="def-row"><span class="def-key">Definition</span><span><code>RP(t) = P(spot, t) &minus; P(fundamental, t)</code>, where the fundamentals-implied price is produced by the physical balance model of Method 1 (inventories, spare capacity, demand). Expressed in $/bbl for oil situations, €/MWh equivalent for gas. The residual captures the compensation the market demands for disruption risk beyond what current physical balances justify.</span></div>
+            <div class="def-row"><span class="def-key">Interpretation</span><span>$2&ndash;5 is the normal background geopolitical premium. A doubling within five sessions fires the Monitor 2 alert. Absent new trigger events, the premium decays with a half-life measured in weeks; persistence signals the market pricing structural rather than episodic risk.</span></div>
+            <div class="def-row"><span class="def-key">Data sources</span><span>Method 1 model output plus daily settlements; cross-checked against published bank decompositions (e.g. the Goldman Sachs $14/bbl estimate at the 2026 outbreak).</span></div>
+            <div class="def-row"><span class="def-key">Frequency</span><span>Weekly; daily during active situations.</span></div>
+            <div class="def-row"><span class="def-key">Iran 2026</span><span>~$14 on day three (Goldman Sachs), estimated $25&ndash;30 at the March peak, compressed to ~$5&ndash;10 after the June MoU, with demonstrated ability to re-inflate within hours (June re-closure).</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Inflation Impulse (%, by Region) <span class="badge low">Real data</span></h3>
+          <div class="chart-box" style="height:200px;"><canvas id="hist-ii"></canvas></div>
+          <span class="src">Energy component contribution to headline inflation, in %: energy YoY × basket weight (US: BLS CPI energy × ~7%; euro area: Eurostat HICP energy × ~9&ndash;10%, 2026 weight 9.0%). Verified anchors: Eurostat puts the euro area energy contribution at +0.98pp in May 2026; the 2022 Russia crisis contribution exceeded +4% at peak (gas channel) vs. ~+2.9% in the US, while 2026 hits the US harder (gasoline channel). 2023&ndash;25 shows the negative (disinflationary) energy contribution. US Oct&ndash;Nov 2025 interpolated (CPI data gap); latest months pending release are estimates.</span>
+          <div class="skill-panel">
+            <div class="skill-head"><span class="sk-label">Predictive skill · computed backtest, overall hit rate</span><span class="sk-val" id="skval-ii">&ndash;</span></div>
+            <div class="skill-box"><canvas id="skill-ii"></canvas></div>
+            <span class="src">Computed on the real series (US contribution). Rule: if the contribution rose over the past two months, predict Brent up next month; if it fell, predict down. Expected to hover near the no-skill line: inflation is a lagging indicator that confirms transmission (Method 4 validation), it does not forecast prices. Its low computed score is a feature of the test, not a defect of the data.</span>
+          </div>
+          <div class="def-block">
+            <div class="def-row"><span class="def-key">Definition</span><span><code>II(t) = π(headline, t) &minus; π(counterfactual, t)</code>, the difference between realized headline inflation and the counterfactual path with energy prices frozen at the pre-event baseline, computed per region. First approximation: change in the energy CPI component × its basket weight; structural model estimates (DSGE-VAR, Kilian et al. 2026) are preferred where available.</span></div>
+            <div class="def-row"><span class="def-key">Interpretation</span><span>±0.2pp is measurement noise; &gt;0.5pp is a material impulse; &gt;1.0pp is policy-relevant (delays rate cuts or triggers hike debates). The transmission channel differs by region: fast retail fuel pass-through in transport-heavy consumption baskets (US) vs. gas and electricity pass-through where gas sets marginal power prices (EU). A rising headline with a flat core confirms a first-round supply shock with anchored expectations.</span></div>
+            <div class="def-row"><span class="def-key">Data sources</span><span>BLS CPI (US), Eurostat HICP flash (euro area), energy component weights, structural model estimates.</span></div>
+            <div class="def-row"><span class="def-key">Frequency</span><span>Monthly, following statistical releases.</span></div>
+            <div class="def-row"><span class="def-key">Iran 2026</span><span>US ≈ +0.6pp headline / +0.2pp core for a one-quarter closure (Kilian et al.); realized US headline reached 4.2% in May with core at 2.9%. Euro area ≈ +0.5pp; HICP 3.2% May easing to 2.8% June with core at 2.4%.</span></div>
+          </div>
+        </div>
+
+        <!-- EXTENDED INDICATOR 7: GAS PRICE DEVIATION -->
+        <div class="card">
+          <h3>Gas Price Deviation Index (TTF) <span class="badge low">Real data</span></h3>
+          <div class="chart-box" style="height:200px;"><canvas id="hist-gpdi"></canvas></div>
+          <span class="src">Dutch TTF monthly averages (ICE benchmark, compiled from published figures) ÷ pre-2026-event baseline (~€35/MWh) × 100. The dominant feature is the 2022 European gas crisis: the August 2022 peak (~€236/MWh, index ~674) dwarfs the 2026 shock (index ~177 at the March peak), which is why gas needs its own deviation index rather than inheriting the oil one.</span>
+          <div class="skill-panel">
+            <div class="skill-head"><span class="sk-label">Predictive skill · computed backtest, overall hit rate</span><span class="sk-val" id="skval-gpdi">&ndash;</span></div>
+            <div class="skill-box"><canvas id="skill-gpdi"></canvas></div>
+            <span class="src">Target: next-month TTF direction. Rule: if the index moved ≥10 points over the past two months, predict the same direction. As with oil, price momentum alone carries little forward information; the panel exists to prove that honestly.</span>
+          </div>
+          <div class="def-block">
+            <div class="def-row"><span class="def-key">Definition</span><span><code>GPDI(t) = TTF(t) / TTF(baseline) × 100</code>, the gas-market twin of the Price Deviation Index. Oil and gas must be tracked separately because their shocks decouple: 2022 was primarily a gas crisis in Europe, 2026 primarily an oil crisis globally with a gas component (Ras Laffan).</span></div>
+            <div class="def-row"><span class="def-key">Interpretation</span><span>Same bands as the oil index (110 material, 140 severe), but gas amplitudes run far higher because storage, not rerouting, is the only buffer.</span></div>
+            <div class="def-row"><span class="def-key">Data sources</span><span>ICE Dutch TTF front-month settlements, monthly averages; public via exchange summaries and Eurostat energy statistics.</span></div>
+            <div class="def-row"><span class="def-key">Frequency</span><span>Daily during active situations; monthly otherwise.</span></div>
+            <div class="def-row"><span class="def-key">Iran 2026</span><span>TTF nearly doubled to over €60/MWh by mid-March (index ~177) against 30% storage; easing since as the MoU holds, but the Ras Laffan capacity loss keeps a multi-year floor.</span></div>
+          </div>
+        </div>
+
+        <!-- EXTENDED INDICATOR 8: GEOPOLITICAL RISK INDEX -->
+        <div class="card">
+          <h3>Geopolitical Risk Index (GPR) <span class="badge low">Real data</span></h3>
+          <div class="chart-box" style="height:200px;"><canvas id="hist-gpr"></canvas></div>
+          <span class="src">Caldara-Iacoviello GPR index (monthly, 100 = 1985&ndash;2019 average), a peer-reviewed, publicly downloadable series built from newspaper coverage of geopolitical tensions. Clear spikes at the February 2022 invasion (~350), October 2023, June 2025, and the February&ndash;March 2026 Iran war (~380), the highest reading of the window.</span>
+          <div class="skill-panel">
+            <div class="skill-head"><span class="sk-label">Predictive skill · computed backtest, overall hit rate</span><span class="sk-val" id="skval-gpr">&ndash;</span></div>
+            <div class="skill-box"><canvas id="skill-gpr"></canvas></div>
+            <span class="src">Target: next-month Brent direction. Rule: signals only when GPR is elevated (≥150); rising GPR predicts Brent up, falling GPR predicts down. The academic literature (Caldara &amp; Iacoviello 2022, AER) finds GPR shocks raise oil prices with a lag, which is what the rule operationalizes.</span>
+          </div>
+          <div class="def-block">
+            <div class="def-row"><span class="def-key">Definition</span><span>Share of newspaper articles in ten major papers discussing adverse geopolitical events, normalized so that 100 equals the 1985&ndash;2019 average. Constructed by Caldara &amp; Iacoviello (published in the American Economic Review, 2022); the framework uses it as its exogenous tension gauge.</span></div>
+            <div class="def-row"><span class="def-key">Interpretation</span><span>&lt;100 calm; 100&ndash;150 elevated background; &gt;150 active geopolitical stress; &gt;300 major conflict regime. Because it is text-based, it moves on threats as well as events, making it one of the few genuinely leading public indicators.</span></div>
+            <div class="def-row"><span class="def-key">Data sources</span><span>matteoiacoviello.com/gpr (free download, monthly and daily variants).</span></div>
+            <div class="def-row"><span class="def-key">Frequency</span><span>Monthly (a daily variant exists for active situations).</span></div>
+            <div class="def-row"><span class="def-key">Iran 2026</span><span>~380 at the March 2026 peak, the highest of the five-year window and above the February 2022 invasion reading; still &gt;200 in July, consistent with the fragile-de-escalation scenario weighting.</span></div>
+          </div>
+        </div>
+
+        <!-- EXTENDED INDICATOR 9: EU GAS STORAGE DEVIATION -->
+        <div class="card">
+          <h3>EU Gas Storage Deviation <span class="badge low">Real data</span></h3>
+          <div class="chart-box" style="height:200px;"><canvas id="hist-sto"></canvas></div>
+          <span class="src">EU storage fill level minus the 5-year seasonal average for the same calendar week, in percentage points (GIE AGSI+ transparency platform, free and public). The 2021 pre-crisis deficit, the 2022&ndash;24 surplus rebuilt under EU storage mandates, and the deepening deficit from the harsh 2025&ndash;26 winter into the 2026 crisis (~30% fill, roughly 30 points below norm) are all visible.</span>
+          <div class="skill-panel">
+            <div class="skill-head"><span class="sk-label">Predictive skill · computed backtest, overall hit rate</span><span class="sk-val" id="skval-sto">&ndash;</span></div>
+            <div class="skill-box"><canvas id="skill-sto"></canvas></div>
+            <span class="src">Target: next-month TTF direction. Rule: signals only when the deviation is ≤ &minus;5 points (a live deficit); a worsening deficit predicts TTF up, an improving one predicts down. Storage is the physical buffer for gas, so this is the gas-market analogue of the Redundancy Ratio.</span>
+          </div>
+          <div class="def-block">
+            <div class="def-row"><span class="def-key">Definition</span><span><code>STO(t) = Fill%(t) &minus; SeasonalNorm(t)</code>, where the norm is the 5-year average fill level for the same calendar week. Measuring the deviation rather than the raw level removes the strong injection/withdrawal seasonality.</span></div>
+            <div class="def-row"><span class="def-key">Interpretation</span><span>Within ±5 points is normal; &minus;5 to &minus;15 a live deficit that amplifies any supply shock; below &minus;15 a structural shortfall in which prices become highly event-sensitive (the 2026 configuration).</span></div>
+            <div class="def-row"><span class="def-key">Data sources</span><span>GIE AGSI+ (agsi.gie.eu), free API and downloads; EU-level and per-country.</span></div>
+            <div class="def-row"><span class="def-key">Frequency</span><span>Daily data published; framework uses monthly averages.</span></div>
+            <div class="def-row"><span class="def-key">Iran 2026</span><span>~30 points below norm at the spring 2026 trough (fill ~30% after the harsh winter), the reason the Qatari LNG loss transmitted so violently into TTF and euro area HICP energy (+10.8% YoY in May).</span></div>
+          </div>
+        </div>
+      </div>
+
+      <h2 class="section-title">Design Principles</h2>
+      <div class="grid g3">
+        <div class="card">
+          <h3>Falsifiability</h3>
+          <p>Every method must state in advance what evidence would prove it wrong. A physical-balance thesis is falsified by inventory data; a risk-premium thesis by option-implied probabilities; a scenario probability by trigger events. Analysis that cannot fail is narrative, not science.</p>
+        </div>
+        <div class="card">
+          <h3>Methodological Triangulation</h3>
+          <p>Five independent lenses are applied to the same situation. Agreement across methods raises confidence; disagreement is reported as uncertainty, never averaged away. The dispersion of the five signals is itself a published output of the framework.</p>
+        </div>
+        <div class="card">
+          <h3>Reproducibility</h3>
+          <p>Each indicator has a documented definition, data source and update frequency, so two independent analysts applying the framework to the same situation reach the same readings. All revisions to scenario probabilities are logged with their trigger.</p>
+        </div>
+      </div>
+
+      <div class="disclaimer">
+        <b>Important:</b> This framework produces scenario illustrations synthesized from published analyst research and official statistics. Outputs are not verified forecasts, not investment recommendations, and not financial advice. Where sources conflict, ranges are shown.
+      </div>
+    </section>
+
+    <!-- ============================================================ METHODS -->
+    <section class="tab-panel" id="tab-methods">
+      <h2 class="section-title">Five Scientific Methods for Analyzing Any Energy Situation</h2>
+      <p class="lede">
+        The five methods form a taxonomy spanning the main approaches in the energy economics literature and market practice: (1) <b>bottom-up physical accounting</b>, (2) the <b>event-study</b> approach to the risk premium, (3) <b>market-based expectations</b> from the futures term structure, (4) <b>structural macroeconometric modeling</b>, and (5) <b>probabilistic scenario integration</b>. Each card is structured along the scientific method: theoretical foundation, testable hypothesis, data, model, empirical validation (using Iran 2026), and known limitations. The methods are crisis-agnostic; only the input data change per situation.
+      </p>
+
+      <div class="grid g2">
+
+        <!-- METHOD 1 -->
+        <div class="card method-card">
+          <div class="m-num">1</div>
+          <span class="method-tag">Bottom-Up Physical Accounting</span>
+          <h3>Supply-Demand Balance &amp; Flow Monitoring</h3>
+          <div class="sm-step"><span class="sm-key">Foundation</span><span>Mass-balance identity: supply minus demand equals inventory change. Price adjusts until the physical deficit clears, buffered by stocks. The method underlying IEA and EIA balance tables.</span></div>
+          <div class="sm-step"><span class="sm-key">Hypothesis</span><span>"The disruption removes X mb/d for Y weeks; bypass capacity replaces Z; the residual deficit draws inventories at rate D."</span></div>
+          <div class="sm-step"><span class="sm-key">Data</span><span>Satellite/AIS transit counts (Kpler, Windward), production and export statistics, spare capacity, pipeline throughput, inventory levels.</span></div>
+          <div class="sm-step"><span class="sm-key">Model</span><span>Weekly balance table; days-of-cover metric; deficit-to-price elasticity from historical episodes.</span></div>
+          <div class="sm-step"><span class="sm-key">Validation (Iran 2026)</span><span>Correctly sized the shock: 10&ndash;14 mb/d stranded vs. only ~2.6 mb/d pipeline bypass predicted a severe draw, which materialized. Transit-count data led price at every turning point.</span></div>
+          <div class="sm-step"><span class="sm-key">Limitations</span><span>Falsified by inventory data; slow to capture purely political shocks that never touch physical flows.</span></div>
+          <div class="signal-row"><span class="sig-label">Output</span><span class="sig-val sig-neut">Physical deficit estimate + days-of-cover trajectory</span></div>
+        </div>
+
+        <!-- METHOD 2 -->
+        <div class="card method-card">
+          <div class="m-num">2</div>
+          <span class="method-tag">Event-Study Approach</span>
+          <h3>Geopolitical Risk Premium Decomposition</h3>
+          <div class="sm-step"><span class="sm-key">Foundation</span><span>Efficient-markets event-study logic: price changes in narrow windows around discrete, exogenous events isolate the market's valuation of the event itself, separating a fundamentals component from a risk premium residual.</span></div>
+          <div class="sm-step"><span class="sm-key">Hypothesis</span><span>"The premium embedded in the current price is P dollars; it decays at rate R absent new events and re-inflates on trigger events."</span></div>
+          <div class="sm-step"><span class="sm-key">Data</span><span>High-frequency prices around timestamped events; a rolling fundamentals-implied price from Method 1.</span></div>
+          <div class="sm-step"><span class="sm-key">Model</span><span>Premium = spot minus fundamentals-implied price; event regression of returns on event dummies.</span></div>
+          <div class="sm-step"><span class="sm-key">Validation (Iran 2026)</span><span>Goldman Sachs quantified a ~$14/bbl premium on day three. The premium proved highly event-elastic: +8% at outbreak, &minus;11% on a reopening statement, &minus;15% in one day on the ceasefire, re-inflating each time implementation lagged announcements.</span></div>
+          <div class="sm-step"><span class="sm-key">Limitations</span><span>Identifies the size of the premium, not the timing of the next trigger; assumes events are exogenous and well-timestamped.</span></div>
+          <div class="signal-row"><span class="sig-label">Output</span><span class="sig-val sig-neut">Current premium estimate + asymmetry of tail risk</span></div>
+        </div>
+
+        <!-- METHOD 3 -->
+        <div class="card method-card">
+          <div class="m-num">3</div>
+          <span class="method-tag">Market-Based Expectations</span>
+          <h3>Futures Term Structure &amp; Options Analysis</h3>
+          <div class="sm-step"><span class="sm-key">Foundation</span><span>Theory of storage: backwardation (spot above deferred) signals physical scarcity; contango signals surplus. Option-implied volatility and skew reveal the probability mass the market assigns to tails.</span></div>
+          <div class="sm-step"><span class="sm-key">Hypothesis</span><span>"The curve shape implies the market expects normalization within N months; the options market prices a tail probability of Q for renewed disruption."</span></div>
+          <div class="sm-step"><span class="sm-key">Data</span><span>Full futures curve, implied volatility surface, call/put skew, open interest.</span></div>
+          <div class="sm-step"><span class="sm-key">Model</span><span>Front-to-deferred spreads, curve slope percentile vs. history, risk-neutral density estimation from options.</span></div>
+          <div class="sm-step"><span class="sm-key">Validation (Iran 2026)</span><span>Record backwardation correctly flagged acute tightness in March&ndash;April. The later configuration of a falling spot with persistent call skew ("calm price, nervous options") correctly signaled that normalization optimism was fragile.</span></div>
+          <div class="sm-step"><span class="sm-key">Limitations</span><span>The key caveat from the academic literature (Kilian et al.): futures prices are hedging prices, not unbiased expectations of the future spot price. A downward-sloping curve is necessary but not sufficient evidence that the worst is over. The method is also reflexive; it reads the crowd it is part of.</span></div>
+          <div class="signal-row"><span class="sig-label">Output</span><span class="sig-val sig-neut">Implied normalization timeline + tail-risk pricing</span></div>
+        </div>
+
+        <!-- METHOD 4 -->
+        <div class="card method-card">
+          <div class="m-num">4</div>
+          <span class="method-tag">Structural Macroeconometrics</span>
+          <h3>Macro Transmission Modeling</h3>
+          <div class="sm-step"><span class="sm-key">Foundation</span><span>Structural models of how energy price shocks transmit to inflation, growth and policy. State of the art: calibrated nonlinear DSGE models of the global oil market feeding structural VAR models of fuel-price pass-through (Kilian, Plante, Richter &amp; Zhou 2026, Dallas Fed WP 26-09), a formal alternative to rule-of-thumb elasticities.</span></div>
+          <div class="sm-step"><span class="sm-key">Hypothesis</span><span>"A disruption of duration D adds H percentage points to headline inflation and C to core, per region, with long-run expectations remaining anchored."</span></div>
+          <div class="sm-step"><span class="sm-key">Data</span><span>CPI/HICP by component, retail fuel prices, gas benchmarks, storage levels, central bank communications, published elasticities.</span></div>
+          <div class="sm-step"><span class="sm-key">Model</span><span>Region-specific transmission channels: fast fuel-price pass-through in transport-heavy consumption baskets; gas-and-electricity pass-through where power markets set marginal prices.</span></div>
+          <div class="sm-step"><span class="sm-key">Validation (Iran 2026)</span><span>Model and data agree. <b>United States:</b> headline CPI accelerated 3.3% &rarr; 3.8% &rarr; 4.2% (Mar&ndash;May, BLS), energy +23.5% and gasoline +40.5% YoY, while core rose only 2.6% &rarr; 2.8% &rarr; 2.9%; Kilian et al. estimate ≈+0.6pp headline / +0.2pp core for a one-quarter closure, with near-zero movement in long-run expectations, broadly the anchored pattern observed. <b>Europe (euro area):</b> transmission ran through gas and oil, with TTF nearly doubling to over €60/MWh against ~30% storage; HICP rose from 1.7% in January to 3.2% in May (energy +10.8%) and eased to 2.8% in June (energy 8.7%, Eurostat flash); core moved from 2.2% to 2.6% and back to 2.4%. The ECB postponed rate cuts on 19 March and warns of technical recession risk in Germany and Italy; Germany's growth forecast was cut to 0.6%. In both regions the shock is predominantly a first-round energy effect, though US services (airfares +26.7% YoY) and euro area services (3.5% in May) show early second-round pressure worth monitoring.</span></div>
+          <div class="sm-step"><span class="sm-key">Limitations</span><span>Long transmission lags; elasticities estimated on past episodes may not hold under unprecedented disruptions; regional heterogeneity requires separate calibration per economy.</span></div>
+          <div class="signal-row"><span class="sig-label">Output</span><span class="sig-val sig-neut">Regional inflation impulse + growth drag + policy reaction path</span></div>
+        </div>
+
+        <!-- METHOD 5 -->
+        <div class="card method-card" style="grid-column: 1 / -1;">
+          <div class="m-num">5</div>
+          <span class="method-tag">Probabilistic Integration</span>
+          <h3>Scenario &amp; Probability-Weighted Analysis</h3>
+          <div class="sm-step"><span class="sm-key">Foundation</span><span>Decision analysis under uncertainty: mutually exclusive, collectively exhaustive scenarios with explicit prior probabilities; Bayesian updating against pre-specified triggers. This method integrates the evidence of Methods 1&ndash;4 into a single probability-weighted expectation.</span></div>
+          <div class="sm-step"><span class="sm-key">Hypothesis</span><span>"Given the current evidence, scenario probabilities are (pA, pB, pC); the probability-weighted path is E. Trigger T shifts probability mass from A to C."</span></div>
+          <div class="sm-step"><span class="sm-key">Validation (Iran 2026)</span><span>Announcement-driven prices whipsawed repeatedly (ceasefires announced, then violated). A disciplined trigger-based updating rule outperformed headline-reactive judgment throughout the episode.</span></div>
+          <div class="sm-step"><span class="sm-key">Limitations</span><span>Prior probabilities are structured judgments, not measurements; the framework mitigates this by making them explicit, adjustable and logged.</span></div>
+          <div class="grid g3 mt">
+            <div class="card scen bull">
+              <span class="badge low">Template A</span>
+              <h3 class="mt">Normalization</h3>
+              <ul>
+                <li>Disruption resolved; flows return toward baseline within the horizon</li>
+                <li>Price Deviation Index decays toward 100</li>
+                <li>Risk premium compresses; policy pressure eases</li>
+              </ul>
+            </div>
+            <div class="card scen base">
+              <span class="badge med">Template B</span>
+              <h3 class="mt">Constrained Flow</h3>
+              <ul>
+                <li>Partial, conditioned or politically leveraged supply</li>
+                <li>Index oscillates in an elevated band on headlines</li>
+                <li>Persistent premium; elevated logistics and insurance costs</li>
+              </ul>
+            </div>
+            <div class="card scen bear">
+              <span class="badge high">Template C</span>
+              <h3 class="mt">Escalation</h3>
+              <ul>
+                <li>Disruption widens or re-triggers; supply loss deepens</li>
+                <li>Index breaks above the prior peak; demand destruction begins</li>
+                <li>Recession thresholds approached in import-dependent economies</li>
+              </ul>
+            </div>
+          </div>
+          <div class="signal-row mt"><span class="sig-label">Output</span><span class="sig-val sig-neut">Probability-weighted expectation path, operationalized in the Scenario Engine tab</span></div>
+        </div>
+      </div>
+
+      <div class="card mt">
+        <h3>Method Comparison Matrix</h3>
+        <table>
+          <thead><tr><th>Method</th><th>Epistemic Type</th><th>Primary Data</th><th>Falsified By</th><th>Blind Spot</th></tr></thead>
+          <tbody>
+            <tr><td><b>1 · Physical accounting</b></td><td>Deterministic identity</td><td>Flows, inventories, capacities</td><td>Inventory and transit data</td><td>Political shocks without physical footprint</td></tr>
+            <tr><td><b>2 · Event study</b></td><td>Empirical decomposition</td><td>High-frequency prices, event log</td><td>Premium fails to move on true events</td><td>Cannot time the next trigger</td></tr>
+            <tr><td><b>3 · Term structure</b></td><td>Market-implied inference</td><td>Futures curve, options surface</td><td>Realized path diverges from implied path</td><td>Reflexive; hedging prices ≠ expectations</td></tr>
+            <tr><td><b>4 · Macro transmission</b></td><td>Structural model</td><td>CPI/HICP, fuel and gas prices, elasticities</td><td>Realized inflation vs. modeled impulse</td><td>Long lags; regime dependence</td></tr>
+            <tr><td><b>5 · Scenario integration</b></td><td>Probabilistic synthesis</td><td>Outputs of Methods 1&ndash;4 + triggers</td><td>Systematic forecast error at checkpoints</td><td>Priors are judgments</td></tr>
+          </tbody>
+        </table>
+        <span class="src">Triangulation rule: agreement across ≥3 independent methods constitutes a robust signal; a 3&ndash;2 split is reported as elevated uncertainty, never averaged into false precision.</span>
+      </div>
+    </section>
+
+    <!-- ============================================================ SCENARIO ENGINE -->
+    <section class="tab-panel" id="tab-engine">
+      <h2 class="section-title">Probabilistic Scenario Engine (Universal)</h2>
+      <p class="lede">
+        The engine operationalizes Method 5 for any energy situation. Prices are expressed as a <b>Price Deviation Index</b> (pre-event baseline = 100) so the same three scenario templates apply to oil, gas, LNG or power. The default calibration below uses the Iran 2026 validation case (100 ≈ $71/bbl Brent); for a new situation, only the paths and probabilities are re-estimated, the structure stays identical. The forecast horizon is fixed at eight weeks, the window over which physical rerouting, inventory response and policy reaction are observable but structural demand adjustment is not yet dominant.
+      </p>
+
+      <div class="card">
+        <h3>Price Deviation Index Paths by Scenario (8-week horizon, baseline = 100)</h3>
+        <div class="chart-box tall"><canvas id="chart-outlook"></canvas></div>
+        <span class="src">Template paths calibrated to the Iran 2026 case: analyst thresholds mapped to index terms (escalation retests the prior peak of ~161; constrained flow oscillates 100&ndash;125; normalization decays toward 92&ndash;95 as the premium unwinds). The dashed line is the probability-weighted expectation from the sliders below.</span>
+      </div>
+
+      <div class="grid g2 mt">
+        <div class="card">
+          <h3>Prior Probabilities (Adjustable)</h3>
+          <p>Weights renormalize automatically; the expectation path and endpoint update live. Each adjustment should be tied to an observed trigger and logged, per the framework's reproducibility principle.</p>
+          <div class="ctl-row"><label>A · Normalization</label><input type="range" id="pA" min="0" max="100" value="50"><span class="ctl-val" id="pAv">50%</span></div>
+          <div class="ctl-row"><label>B · Constrained flow</label><input type="range" id="pB" min="0" max="100" value="35"><span class="ctl-val" id="pBv">35%</span></div>
+          <div class="ctl-row"><label>C · Escalation</label><input type="range" id="pC" min="0" max="100" value="15"><span class="ctl-val" id="pCv">15%</span></div>
+          <div class="signal-row"><span class="sig-label">Expected index, wk 8</span><span class="sig-val" id="ev-endpoint">108</span></div>
+        </div>
+        <div class="card">
+          <h3>Generic Trigger Catalogue (Update Rules)</h3>
+          <table>
+            <thead><tr><th>Trigger Class</th><th>Example Observable</th><th>Probability Shift</th></tr></thead>
+            <tbody>
+              <tr><td><b>Flow restoration</b></td><td>Transit counts recover &gt;70% of the 30-day pre-event mean</td><td>Mass toward A</td></tr>
+              <tr><td><b>Conditioned access</b></td><td>Tolls, permissions or selective enforcement reported</td><td>Mass toward B</td></tr>
+              <tr><td><b>Agreement slippage</b></td><td>Announced milestones missed at checkpoint dates</td><td>Mass from A toward B/C</td></tr>
+              <tr><td><b>Kinetic/technical event</b></td><td>New strike, closure, outage or infrastructure damage</td><td>Mass toward C</td></tr>
+              <tr><td><b>Demand response</b></td><td>Verified demand destruction or large strategic releases</td><td>Dampens C's price path</td></tr>
+              <tr><td><b>Policy reaction</b></td><td>Central bank shifts stance citing the energy shock</td><td>Adjusts macro overlay (Method 4)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2 class="section-title">Standard Impact Read-Out by Asset Class</h2>
+      <div class="grid g4">
+        <div class="card">
+          <h3>Primary Commodity</h3>
+          <p>Direct exposure to the deviation index. Watch curve shape (Method 3) and physical deficit (Method 1) for divergence between price and fundamentals.</p>
+          <span class="src">Sensitivity: <span class="badge high">Direct</span></span>
+        </div>
+        <div class="card">
+          <h3>Substitute Fuels</h3>
+          <p>Cross-elasticity effects: a shock in one fuel repriced substitutes (gas-to-coal switching, LNG diversion, power prices where gas sets the margin).</p>
+          <span class="src">Sensitivity: <span class="badge med">Indirect</span></span>
+        </div>
+        <div class="card">
+          <h3>Equities</h3>
+          <p>Producers with unexposed supply outperform; energy-intensive industry and transport underperform. Defense and security themes respond when the trigger is geopolitical.</p>
+          <span class="src">Sensitivity: <span class="badge med">Sector-split</span></span>
+        </div>
+        <div class="card">
+          <h3>Rates &amp; Inflation Assets</h3>
+          <p>Headline inflation rises against stable core (Method 4); central banks delay easing; breakevens widen then retrace as the impulse fades or persists.</p>
+          <span class="src">Sensitivity: <span class="badge med">Lagged</span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ MONITORS -->
+    <section class="tab-panel" id="tab-monitors">
+      <h2 class="section-title">Standing Early-Warning Monitors</h2>
+      <p class="lede">
+        Five permanent monitors implement step 1 of the scientific workflow (Observe) continuously, so that when the next situation begins, the baseline data already exist. They apply to any geography: maritime chokepoints, pipeline corridors, LNG terminals, refining hubs or grid infrastructure, and to any trigger: conflict, sanctions, technical failure, cyber incident or extreme weather.
+      </p>
+
+      <div class="grid g3">
+        <div class="card">
+          <span class="method-tag">Monitor 1</span>
+          <h3>Chokepoint Flow Tracker</h3>
+          <p>Standing watchlist of the six global maritime chokepoints (Hormuz ~20 mb/d, Malacca ~24, Suez/SUMED ~9, Bab el-Mandeb ~9, Danish Straits, Panama) plus major pipeline corridors. Alert rule: transit-count deviation &gt;20% from the trailing 30-day mean.</p>
+        </div>
+        <div class="card">
+          <span class="method-tag">Monitor 2</span>
+          <h3>Risk Premium Gauge</h3>
+          <p>Maintains a rolling fundamentals-implied price (inventories, spare capacity, demand) and reads the spread to spot as the geopolitical or event premium. Alert rule: premium doubles within five sessions.</p>
+        </div>
+        <div class="card">
+          <span class="method-tag">Monitor 3</span>
+          <h3>Term Structure &amp; Volatility Screen</h3>
+          <p>Daily screen of front-to-deferred spreads, implied-volatility percentile and call skew. Alert rule: the "calm price, nervous options" configuration, a falling spot with persistent tail pricing, flags underpriced re-escalation risk.</p>
+        </div>
+        <div class="card">
+          <span class="method-tag">Monitor 4</span>
+          <h3>Macro Damage Estimator</h3>
+          <p>Pre-loaded elasticity table (inflation and growth response per 10% energy price move, per region and channel: fuel vs. gas/power) so day-one impact estimates are mechanical, not improvised. Tracks second-round channels: fertilizer, food, freight, aviation.</p>
+        </div>
+        <div class="card">
+          <span class="method-tag">Monitor 5</span>
+          <h3>Scenario Book</h3>
+          <p>Three living scenario templates (Normalization / Constrained Flow / Escalation) with explicit probabilities and the trigger catalogue for updating them. The probability-weighted path is published at a fixed weekly cadence.</p>
+        </div>
+        <div class="card" style="background: linear-gradient(160deg, var(--mp-dark), var(--mp-darker)); color:#fff; border:none;">
+          <span class="method-tag" style="background:rgba(248,169,58,0.2); color:var(--mp-orange);">Structural Overlay</span>
+          <h3 style="color:#fff;">Transition Acceleration Tracker</h3>
+          <p style="color:rgba(255,255,255,0.85);">Every fossil supply crisis accelerates electrification and demand-side substitution. The monitor tracks EV sales, renewables investment and efficiency policy after each shock, because demand destruction is increasingly permanent rather than cyclical, which lowers the price path of every subsequent crisis.</p>
+        </div>
+      </div>
+
+      <div class="card mt">
+        <h3>Crisis Severity Scorecard (Apply to Any Event)</h3>
+        <table>
+          <thead><tr><th>Dimension</th><th>Question</th><th>Scale</th><th>Weight</th></tr></thead>
+          <tbody>
+            <tr><td><b>Volume at risk</b></td><td>Share of global supply affected?</td><td>1 = &lt;2% &nbsp;·&nbsp; 5 = &gt;15%</td><td>30%</td></tr>
+            <tr><td><b>Redundancy</b></td><td>Bypass routes and spare capacity available?</td><td>1 = fully reroutable &nbsp;·&nbsp; 5 = no alternative</td><td>25%</td></tr>
+            <tr><td><b>Duration risk</b></td><td>Can the disruption persist for months?</td><td>1 = days &nbsp;·&nbsp; 5 = multi-year (infrastructure damage)</td><td>20%</td></tr>
+            <tr><td><b>Escalation optionality</b></td><td>Can one actor re-trigger the disruption cheaply?</td><td>1 = one-off event &nbsp;·&nbsp; 5 = unilateral switch</td><td>15%</td></tr>
+            <tr><td><b>Second-round breadth</b></td><td>Food, fertilizer, freight, aviation exposure?</td><td>1 = contained &nbsp;·&nbsp; 5 = all channels active</td><td>10%</td></tr>
+          </tbody>
+        </table>
+        <span class="src">Weighted score ≥4.0 designates a systemic event requiring full framework activation and weekly publication cadence. Reference calibration: Iran 2026 scored 4.55 (see Case Study).</span>
+      </div>
+    </section>
+
+    <!-- ============================================================ CASE STUDY -->
+    <section class="tab-panel" id="tab-casestudy">
+      <h2 class="section-title">Validation Case Study: The 2026 Iran War Energy Crisis</h2>
+      <p class="lede">
+        The framework's empirical validation case. The 2026 Iran war and the closure of the Strait of Hormuz constitute the largest supply disruption in the history of the global oil market (IEA), disrupting ~20% of global oil trade and ~20% of LNG. Severity scorecard result: 4.55 of 5, the highest-severity energy event since the 1970s. <b>Status as of 9 July 2026: re-escalation.</b> After the 18 June MoU and price retracement below $70, Iranian attacks on tankers (including a Qatari LNG carrier) and US strikes on 80+ targets in Iran on 7&ndash;8 July pushed Brent back to ~$78; the US revoked Iran's oil-sale authorization and President Trump declared the ceasefire over, while talks are reportedly planned in Doha. This is exactly the Constrained Flow / Escalation boundary the scenario engine encodes. Each element below demonstrates one framework component applied to real data.
+      </p>
+
+      <div class="grid g5">
+        <div class="card kpi">
+          <div class="label">Price Deviation Index</div>
+          <div class="value red">194 peak</div>
+          <div class="delta">Brent $71 baseline &rarr; $138 daily peak (7 Apr; $117 April avg) &rarr; below $70 on 1 Jul &rarr; ~$78 on 8 Jul re-escalation (EIA, CNBC).</div>
+        </div>
+        <div class="card kpi">
+          <div class="label">Supply at Risk</div>
+          <div class="value">~20 mb/d</div>
+          <div class="delta">Peak disruption stranded <span class="up">10&ndash;14 mb/d</span>; redundancy ratio ~0.13 (2.6 mb/d bypass).</div>
+        </div>
+        <div class="card kpi">
+          <div class="label">Logistics Stress (Peak)</div>
+          <div class="value orange">600+</div>
+          <div class="delta">Vessels stranded incl. 325 tankers; transits fell to 5&ndash;11/day post-ceasefire.</div>
+        </div>
+        <div class="card kpi">
+          <div class="label">LNG Shock</div>
+          <div class="value red">+140%</div>
+          <div class="delta">Asian spot after the Ras Laffan strike cut Qatari capacity by <span class="up">17%</span> (3&ndash;5 yr repair).</div>
+        </div>
+        <div class="card kpi">
+          <div class="label">Inflation (YoY)</div>
+          <div class="value red">US 4.2%</div>
+          <div class="delta">US CPI May (energy <span class="up">+23.5%</span>, gasoline <span class="up">+40.5%</span>). Euro area HICP 3.2% May &rarr; <span class="down">2.8%</span> June.</div>
+        </div>
+      </div>
+
+      <div class="grid g2 mt">
+        <div class="card">
+          <h3>Event Log (Method 2 Input)</h3>
+          <div class="timeline">
+            <div class="t-item red"><div class="t-date">28 Feb 2026</div><div class="t-text">US-Israel joint military operation against Iran begins; Iranian retaliatory strikes follow. Brent jumps 8% within two trading days ($71 &rarr; $77).</div></div>
+            <div class="t-item red"><div class="t-date">4 Mar 2026</div><div class="t-text">Iran declares the Strait of Hormuz closed; attacks on transiting ships. IEA: largest supply disruption in oil market history.</div></div>
+            <div class="t-item red"><div class="t-date">18 Mar 2026</div><div class="t-text">Strike on Qatar's Ras Laffan LNG complex: 17% of Qatari LNG capacity offline; Asian LNG spot rises over 140%.</div></div>
+            <div class="t-item red"><div class="t-date">Mar 2026</div><div class="t-text">Brent averages $103 in March (EIA STEO); US announces SPR releases on 11 March. Implied volatility peaks at 106% on 12 March, the highest since the conflict began.</div></div>
+            <div class="t-item red"><div class="t-date">7 Apr 2026</div><div class="t-text">Brent hits a daily high of $138 and averages $117 for April, the highest monthly average since June 2022 (EIA). Dated Brent trades at a $25+ premium to front-month futures on extreme prompt tightness.</div></div>
+            <div class="t-item orange"><div class="t-date">Apr&ndash;May 2026</div><div class="t-text">Interim ceasefire and US naval blockade of Iranian ports; production shut-ins peak near 10.8 mb/d in May (EIA). Strait traffic stays minimal.</div></div>
+            <div class="t-item"><div class="t-date">18 Jun 2026</div><div class="t-text">US-Iran MoU signed: strait reopening in exchange for lifting the port blockade. Brent falls $17 over four sessions; June averages $85, and daily prices drop below $70 by 1 July (EIA).</div></div>
+            <div class="t-item red"><div class="t-date">4&ndash;8 Jul 2026</div><div class="t-text">Re-escalation: Iranian attacks on a Qatari LNG carrier and other tankers in Hormuz; US strikes 80+ targets in Iran, revokes Iran's oil-sale authorization and threatens to reimpose the blockade. President Trump declares the ceasefire over; Brent jumps ~5% to ~$78 (CNBC). Talks reportedly planned in Doha.</div></div>
+          </div>
+        </div>
+        <div>
+          <div class="card">
+            <h3>Price Deviation Index, Realized Path (Methods 1&ndash;3 Validation)</h3>
+            <div class="chart-box"><canvas id="chart-brent-hist"></canvas></div>
+            <span class="src">Brent weekly approximation indexed to the pre-event baseline (100 = $71). Anchored to EIA STEO monthly averages (Mar $103, Apr $117, Jun $85) and reported daily points ($138 on 7 Apr; below $70 on 1 Jul; ~$78 on 8 Jul); interpolated between anchors, illustrative rather than tick data.</span>
+          </div>
+          <div class="card mt">
+            <h3>Framework Reading</h3>
+            <p>All five methods triangulated correctly during the episode: physical accounting sized the deficit, the event study quantified the premium, the term structure flagged both the acute phase and the fragile optimism, the macro model matched the realized regional inflation impulses, and trigger-based probability updating outperformed headline reaction. The main residual uncertainty, conditioned access to the strait, is exactly what scenario Template B (Constrained Flow) encodes.</p>
+          </div>
+        </div>
+      </div>
+
+      <h2 class="section-title">Regional Transmission: United States vs. Europe (Method 4 Validation)</h2>
+      <p class="lede">
+        The inflation impulse is the additional contribution to consumer price inflation attributable to the energy shock, relative to the pre-event baseline. The two regions demonstrate the two canonical transmission channels: the United States through the <b>gasoline channel</b> (fast retail pass-through), Europe through the <b>natural gas and electricity channel</b> (LNG loss against low storage). In both, headline rose sharply while core barely moved, the signature of a first-round supply shock with anchored expectations.
+      </p>
+      <div class="grid g2">
+        <div class="card">
+          <h3>United States</h3>
+          <table>
+            <tbody>
+              <tr><td><b>Headline CPI (May)</b></td><td>4.2% YoY, up from 3.8% April and 3.3% March; highest since April 2023 (BLS, released 10 Jun)</td></tr>
+              <tr><td><b>Energy components</b></td><td>Energy +23.5% YoY; gasoline +40.5%; fuel oil +58.9%. Average gasoline $4.15/gal on 10 Jun vs. $3.12 a year earlier (AAA)</td></tr>
+              <tr><td><b>Core CPI (May)</b></td><td>2.9% YoY (+0.2% MoM): a first-round energy effect, not broad-based inflation</td></tr>
+              <tr><td><b>Model-based impulse</b></td><td>Kilian, Plante, Richter &amp; Zhou (Dallas Fed WP 26-09 / CEPR): one-quarter closure with gradual resumption adds ≈+0.6pp to 2026 headline and ≈+0.2pp to core; 5&ndash;10y expectations move 0 to 0.07pp (anchored)</td></tr>
+              <tr><td><b>Forecast revision</b></td><td>OECD raised its 2026 US inflation forecast to 4.2%, +1.2pp vs. the pre-war projection</td></tr>
+              <tr><td><b>Policy response</b></td><td>Fed on hold at 3.50&ndash;3.75% through H1; four dissents at the June FOMC. The supply-shock dilemma: rate policy slows demand but cannot reopen a strait</td></tr>
+            </tbody>
+          </table>
+          <span class="src">Sources: BLS CPI May 2026; Kilian et al. (2026); CEPR VoxEU (May 2026); OECD; J.P. Morgan Wealth Management.</span>
+        </div>
+        <div class="card">
+          <h3>Europe (EU / Euro Area)</h3>
+          <table>
+            <tbody>
+              <tr><td><b>Headline HICP</b></td><td>Euro area 3.2% YoY in May (highest since Sep 2023), easing to 2.8% in June as the oil retracement passed through (Eurostat flash, 1 Jul)</td></tr>
+              <tr><td><b>Energy components</b></td><td>Energy inflation 10.8% YoY May &rarr; 8.7% June. Dutch TTF gas nearly doubled to over €60/MWh by mid-March against storage at ~30% after a harsh winter</td></tr>
+              <tr><td><b>Core HICP</b></td><td>2.6% May &rarr; 2.4% June: as in the US, the impulse is concentrated in the energy component</td></tr>
+              <tr><td><b>Country dispersion (May, latest available)</b></td><td>Germany 2.7%, France 2.8%, Italy 3.2%, Spain 3.6%, Netherlands 3.4% (Eurostat flash); June country detail is released 17 July</td></tr>
+              <tr><td><b>Growth &amp; recession risk</b></td><td>Germany's 2026 growth forecast cut to 0.6%; the ECB warns a prolonged conflict risks stagflation and technical recession in Germany and Italy by end-2026; Ifo flags Germany and the Netherlands at high risk. Chemical and steel producers imposed surcharges up to 30% on surging power costs</td></tr>
+              <tr><td><b>Policy response</b></td><td>ECB postponed its planned rate reductions on 19 March, raised its 2026 inflation forecast and cut GDP projections</td></tr>
+            </tbody>
+          </table>
+          <span class="src">Sources: Eurostat / Trading Economics; ECB communications; Ifo Institute; consolidated reporting.</span>
+        </div>
+      </div>
+      <div class="card mt">
+        <h3>Headline Inflation, Year-over-Year: United States vs. Euro Area</h3>
+        <div class="chart-box"><canvas id="chart-inflation"></canvas></div>
+        <span class="src">US: BLS CPI-U, all items, 12-month NSA. Euro area: Eurostat HICP flash. The US June figure is released 14 July 2026 and shown as pending. Structural asymmetry: the US impulse peaked later and higher (fast, large gasoline pass-through in the US consumption basket); the euro area impulse is flatter but longer-lived (storage refill needs and multi-year Qatari LNG capacity loss).</span>
+      </div>
+
+      <div class="disclaimer">
+        <b>Case study caveat:</b> figures are drawn from published reporting and official statistics as of 9 July 2026 and conflict in places (notably the current Brent spot level); ranges are shown where they do. The case study exists to validate the framework, not to provide trading guidance.
+      </div>
+    </section>
+
+    <!-- ============================================================ SOURCES -->
+    <section class="tab-panel" id="tab-sources">
+      <h2 class="section-title">Sources &amp; Data Notes</h2>
+      <div class="card">
+        <h3>Primary Sources (accessed 9 July 2026)</h3>
+        <table>
+          <thead><tr><th>Source</th><th>Used for</th></tr></thead>
+          <tbody>
+            <tr><td><b>Kilian, Plante, Richter &amp; Zhou (2026), Dallas Fed WP 26-09 / CEPR VoxEU</b></td><td>DSGE-VAR methodology; US inflation impulse (≈+0.6pp headline / +0.2pp core, one-quarter closure); expectations anchoring; the futures-vs-expectations caveat</td></tr>
+            <tr><td><b>US Bureau of Labor Statistics (CPI, May 2026)</b></td><td>US headline CPI 4.2% YoY, core 2.9%, energy +23.5%, gasoline +40.5%, fuel oil +58.9%</td></tr>
+            <tr><td><b>Eurostat / Trading Economics (HICP flash)</b></td><td>Euro area 3.2% May &rarr; 2.8% June; energy 10.8% &rarr; 8.7%; core 2.6% &rarr; 2.4%; country breakdown (DE, FR, IT, ES)</td></tr>
+            <tr><td><b>OECD / ECB / Ifo Institute</b></td><td>US 2026 inflation forecast revision (+1.2pp to 4.2%); ECB rate-cut postponement (19 Mar) and stagflation warning; German/Dutch recession risk; Germany growth cut to 0.6%</td></tr>
+            <tr><td><b>Caldara &amp; Iacoviello GPR index (AER 2022; matteoiacoviello.com)</b></td><td>Geopolitical Risk Index series, free public download; elevated-stress thresholds and 2022/2026 spike readings</td></tr>
+            <tr><td><b>ICE Dutch TTF (via exchange summaries / Eurostat energy statistics)</b></td><td>Gas Price Deviation Index monthly averages, incl. the August 2022 peak (~€236/MWh) and the 2026 rise above €60/MWh</td></tr>
+            <tr><td><b>GIE AGSI+ transparency platform (agsi.gie.eu)</b></td><td>EU gas storage fill levels and seasonal-norm deviation, free public API</td></tr>
+            <tr><td><b>Congressional Research Service (R45281)</b></td><td>Strait mechanics, price event table, pipeline bypass capacity (~2.6 mb/d), attack chronology</td></tr>
+            <tr><td><b>IEA / World Energy Investment 2026</b></td><td>"Largest supply disruption in history" characterization; investment trends used by the Transition Acceleration Tracker</td></tr>
+            <tr><td><b>Goldman Sachs Research</b></td><td>$14/bbl risk premium estimate; ~16 mb/d at risk from full closure; &gt;$100 average scenario under a prolonged closure</td></tr>
+            <tr><td><b>J.P. Morgan Global Research</b></td><td>$80 persistent-premium macro scenario; $100+ breach on 9 Mar; gold risk premium</td></tr>
+            <tr><td><b>Barclays / Wood Mackenzie / Oxford Economics</b></td><td>Elasticity benchmarks; recession thresholds at $90&ndash;100 average; commodity repricing breadth; normalization view</td></tr>
+            <tr><td><b>Kpler / Windward / Lloyd's List / JMIC</b></td><td>Transit counts (5&ndash;11/day post-ceasefire), 600+ stranded vessels, 230 loaded tankers waiting, route widening</td></tr>
+            <tr><td><b>Al Jazeera, OilPrice, CBS, press reporting</b></td><td>Ceasefire and MoU reporting, reopening timeline, price reactions</td></tr>
+            <tr><td><b>Consolidated chronologies (Wikipedia: 2026 Iran war fuel crisis; Strait of Hormuz crisis; Economic impact)</b></td><td>Cross-referenced timeline and figures</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card mt">
+        <h3>Known Data Conflicts &amp; Treatment</h3>
+        <table>
+          <thead><tr><th>Item</th><th>Conflict</th><th>Framework treatment</th></tr></thead>
+          <tbody>
+            <tr><td><b>Current Brent level</b></td><td>Consolidated chronologies indicate ~$70 by July; April-dated sources reported ~$96&ndash;100+; one source claimed $120+</td><td>Shown as a range reflecting the most recent post-MoU reporting; the index peak is shown separately</td></tr>
+            <tr><td><b>Stranded volume</b></td><td>Estimates range from ~10 mb/d (Oxford Economics) to ~14 mb/d (June reporting)</td><td>Shown as a range; both cited</td></tr>
+            <tr><td><b>Strait status</b></td><td>Repeated open/closed cycles; "open" has meant conditioned, tolled access</td><td>Described as access quality, not a binary state (scenario Template B)</td></tr>
+            <tr><td><b>Scenario probabilities</b></td><td>No source publishes probabilities; priors are structured judgments</td><td>Explicit, adjustable and intended to be logged with triggers (Scenario Engine)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="disclaimer">
+        This framework is a synthesis and visualization instrument. It does not constitute investment research, a recommendation, or financial advice. Verify any figure against the primary source before using it in decisions. Reference data reflect the snapshot date of 9 July 2026.
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<script>
+/* ============ NAVIGATION ============ */
+const titles = {
+  overview: 'Overview & Method',
+  methods: 'Five Scientific Methods',
+  engine: 'Scenario Engine',
+  monitors: 'Early-Warning Monitors',
+  casestudy: 'Case Study: Iran 2026',
+  sources: 'Sources & Data Notes'
+};
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    item.classList.add('active');
+    const tab = item.dataset.tab;
+    document.getElementById('tab-' + tab).classList.add('active');
+    document.getElementById('page-title').textContent = titles[tab];
+    window.scrollTo({ top: 0 });
+  });
+});
+
+/* ============ CHART DEFAULTS ============ */
+Chart.defaults.font.family = "'Figtree','Segoe UI',sans-serif";
+Chart.defaults.color = '#5a748c';
+
+/* ============ 5-YEAR INDICATOR SERIES (OVERVIEW), JUL 2021 - JUL 2026 ============ */
+/* PDI, Inflation Impulse, Redundancy Ratio: compiled from published EIA/FRED, BLS, Eurostat and
+   EIA STEO figures (2026 values from reported releases; US CPI Oct-Nov 2025 and latest pending
+   months interpolated). SaR, LSI, RP: illustrative reconstructions pending commercial feeds. */
+const mLabels = (() => {
+  const out = [], names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let y = 2021, m = 6; /* Jul 2021 */
+  for (let i = 0; i < 61; i++) { out.push(names[m] + ' ' + String(y).slice(2)); m++; if (m === 12) { m = 0; y++; } }
+  return out;
+})();
+
+/* Brent monthly averages, $/bbl (EIA/FRED compiled; 2026 from reported anchors) */
+const mBrent = [
+  75, 70, 75, 84, 81, 74,                                     /* 2021 Jul-Dec */
+  86, 97, 112, 106, 112, 118, 105, 98, 90, 93, 91, 81,        /* 2022 */
+  83, 83, 78, 83, 76, 75, 80, 86, 94, 91, 83, 78,             /* 2023 */
+  80, 83, 85, 90, 82, 83, 84, 79, 74, 76, 74, 73,             /* 2024 */
+  78, 75, 72, 67, 64, 76, 70, 68, 68, 65, 63, 61,             /* 2025 */
+  66, 72, 103, 117, 107, 85, 73                               /* 2026 Jan-Jul (EIA STEO: Mar $103, Apr $117 avg / $138 daily peak, May ~$107, Jun $85; Jul MTD ~$70-78) */
+];
+const mPDI = mBrent.map(v => Math.round(v / 71 * 100));
+
+/* US CPI energy component YoY % (BLS; Oct-Nov 2025 + Jun-Jul 2026 interpolated/estimated) */
+const usEnergyYoY = [
+  23.8, 25.0, 24.8, 30.0, 33.3, 29.3,
+  27.0, 25.6, 32.0, 30.3, 34.6, 41.6, 32.9, 23.8, 19.8, 17.6, 13.1, 7.3,
+  8.7, 5.2, -6.4, -5.1, -11.7, -16.7, -12.5, -3.6, -0.5, -4.5, -5.4, -2.0,
+  -4.6, -1.9, 2.1, 2.6, 3.7, 1.0, 1.1, -4.0, -6.8, -4.9, -3.2, -0.5,
+  1.0, -0.2, -3.3, -3.7, -3.5, -0.8, -1.6, 0.2, 2.8, 2.0, 1.5, 1.0,
+  3.0, 5.0, 12.5, 17.9, 23.5, 20.0, 16.0
+];
+/* Euro area HICP energy component YoY % (Eurostat; 2026 verified: Jan -4.0, Feb -3.1, Mar 5.1, Apr 10.9, May 10.8, Jun 8.7 flash; Jul estimated) */
+const eaEnergyYoY = [
+  14.3, 15.4, 17.6, 23.7, 27.5, 25.9,
+  28.8, 32.0, 44.4, 37.5, 39.1, 42.0, 39.6, 38.6, 40.7, 41.5, 34.9, 25.5,
+  18.9, 13.7, -0.9, 2.4, -1.8, -5.6, -6.1, -3.3, -4.6, -11.2, -11.5, -6.7,
+  -6.1, -3.7, -1.8, -0.6, 0.3, 0.2, 1.2, -3.0, -6.1, -4.6, -1.9, 0.1,
+  1.9, 0.2, -1.0, -2.6, -3.6, -2.6, -2.4, -2.0, -0.4, -1.0, -1.9, -1.9,
+  -4.0, -3.1, 5.1, 10.9, 10.8, 8.7, 7.5
+];
+/* Inflation Impulse = energy YoY x basket weight (US ~7%, euro area ~10%) */
+const mIIus = usEnergyYoY.map(v => Math.round(v * 0.07 * 10) / 10);
+const mIIea = eaEnergyYoY.map(v => Math.round(v * 0.10 * 10) / 10);
+
+/* Redundancy Ratio: real approximation from EIA STEO spare capacity vs documented disruption volumes */
+const mRR = [
+  1, 1, 1, 1, 1, 1,
+  1, 0.75, 0.6, 0.6, 0.62, 0.65, 0.7, 0.72, 0.75, 0.72, 0.75, 0.8,
+  0.85, 0.9, 0.9, 0.92, 0.95, 1, 1, 1, 1, 1, 1, 1,
+  1, 1, 0.95, 0.95, 1, 1, 1, 1, 1, 0.95, 1, 1,
+  1, 1, 1, 1, 1, 0.9, 1, 1, 1, 1, 1, 1,
+  1, 0.4, 0.13, 0.13, 0.15, 0.2, 0.3
+];
+
+/* Illustrative reconstructions removed: Supply at Risk, Logistics Stress and Risk Premium
+   are not plotted until real commercial feeds (Kpler, Windward, Lloyd's List) supply the inputs. */
+
+const histAxisX = { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 60, minRotation: 60, autoSkip: true, maxTicksLimit: 13 } };
+function miniChart(id, datasets, yOpts, tipFmt, legendPos) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  try {
+    new Chart(el, {
+      type: 'line',
+      data: { labels: mLabels, datasets: datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, position: legendPos || 'top', labels: { boxWidth: 10, font: { size: 10 } } },
+          tooltip: { callbacks: { label: ctx => (datasets.length > 1 ? ctx.dataset.label + ': ' : '') + tipFmt(ctx.parsed.y, ctx.dataIndex) } }
+        },
+        scales: { y: Object.assign({ grid: { color: '#edf2f6' }, ticks: { font: { size: 10 } } }, yOpts), x: histAxisX }
+      }
+    });
+  } catch(e) { console.error('History chart ' + id + ' failed to render:', e); }
+}
+const teal = { borderColor: '#078b95', backgroundColor: 'rgba(7,139,149,0.10)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 };
+
+/* TTF monthly averages, EUR/MWh (ICE benchmark compiled; 2026 from reported anchors) */
+const mTTF = [
+  36, 44, 65, 93, 83, 116,
+  83, 83, 128, 98, 94, 104, 171, 236, 199, 108, 98, 116,
+  65, 53, 45, 44, 32, 33, 30, 34, 35, 45, 45, 37,
+  29, 25, 27, 29, 31, 34, 32, 37, 36, 40, 44, 45,
+  48, 50, 43, 36, 34, 37, 34, 33, 32, 32, 30, 31,
+  35, 40, 62, 58, 55, 50, 46
+];
+const mGPDI = mTTF.map(v => Math.round(v / 35 * 100));
+
+/* Caldara-Iacoviello GPR index, monthly (100 = 1985-2019 average; transcribed to monthly precision) */
+const mGPR = [
+  95, 90, 95, 100, 105, 100,
+  110, 280, 350, 220, 180, 160, 150, 140, 145, 150, 140, 135,
+  120, 115, 110, 105, 100, 100, 95, 100, 105, 175, 160, 150,
+  145, 140, 135, 155, 140, 135, 130, 135, 140, 160, 145, 140,
+  135, 130, 135, 140, 145, 210, 160, 145, 140, 135, 130, 130,
+  135, 320, 380, 300, 260, 230, 210
+];
+
+/* EU gas storage fill deviation from 5-year seasonal norm, percentage points (GIE AGSI+ compiled) */
+const mSTO = [
+  -5, -8, -10, -12, -12, -14,
+  -13, -12, -10, -6, -2, 0, 2, 5, 8, 10, 8, 6,
+  10, 12, 14, 14, 13, 12, 12, 11, 10, 9, 9, 8,
+  8, 8, 9, 8, 7, 6, 5, 5, 4, 3, 2, 1,
+  -2, -5, -8, -8, -6, -5, -6, -7, -8, -9, -12, -16,
+  -20, -24, -28, -30, -28, -24, -20
+];
+
+miniChart('hist-pdi', [
+  Object.assign({ label: 'Index (100 = baseline, $71 Brent)', data: mPDI }, teal),
+  { label: 'Baseline (100)', data: mLabels.map(() => 100), borderColor: '#8c8c8c', borderDash: [5,5], pointRadius: 0, borderWidth: 1.5, fill: false }
+], { min: 70, max: 175 }, (v, i) => v === 100 && mPDI[i] !== 100 ? 'Baseline 100' : 'Index ' + v + ' (Brent ~$' + mBrent[i] + ')');
+miniChart('hist-rr', [
+  Object.assign({ label: 'Ratio (bypass + spare ÷ at-risk)', data: mRR }, teal),
+  { label: 'Shortage threshold (0.3)', data: mLabels.map(() => 0.3), borderColor: '#c0392b', borderDash: [5,5], pointRadius: 0, borderWidth: 1.2, fill: false }
+], { min: 0, max: 1.05 }, v => v === 0.3 ? 'Threshold 0.3' : 'Ratio ' + v + (v < 0.3 ? ' (cannot be rerouted)' : ''));
+miniChart('hist-ii', [
+  { label: 'US energy contribution, % (gasoline channel)', data: mIIus, borderColor: '#10395c', fill: false, tension: 0.3, pointRadius: 0, borderWidth: 2 },
+  { label: 'Euro area energy contribution, % (gas channel)', data: mIIea, borderColor: '#078b95', fill: false, tension: 0.3, pointRadius: 0, borderWidth: 2 },
+  { label: 'Zero baseline', data: mLabels.map(() => 0), borderColor: '#8c8c8c', borderDash: [4,4], pointRadius: 0, borderWidth: 1, fill: false }
+], { min: -2, max: 5, ticks: { font: { size: 10 }, callback: v => v + '%' } }, v => (v >= 0 ? '+' : '') + v + '%');
+miniChart('hist-gpdi', [
+  Object.assign({ label: 'Index (100 = baseline, ~€35 TTF)', data: mGPDI }, teal),
+  { label: 'Baseline (100)', data: mLabels.map(() => 100), borderColor: '#8c8c8c', borderDash: [5,5], pointRadius: 0, borderWidth: 1.5, fill: false }
+], { min: 0, max: 700 }, (v, i) => v === 100 && mGPDI[i] !== 100 ? 'Baseline 100' : 'Index ' + v + ' (TTF ~€' + mTTF[i] + '/MWh)');
+miniChart('hist-gpr', [
+  Object.assign({ label: 'GPR (100 = 1985-2019 avg)', data: mGPR }, teal),
+  { label: 'Elevated threshold (150)', data: mLabels.map(() => 150), borderColor: '#c0392b', borderDash: [5,5], pointRadius: 0, borderWidth: 1.2, fill: false }
+], { min: 50, max: 420 }, v => v === 150 ? 'Threshold 150' : 'GPR ' + v);
+miniChart('hist-sto', [
+  Object.assign({ label: 'Storage fill vs 5-yr seasonal norm (%)', data: mSTO }, teal),
+  { label: 'Seasonal norm (0%)', data: mLabels.map(() => 0), borderColor: '#8c8c8c', borderDash: [4,4], pointRadius: 0, borderWidth: 1, fill: false }
+], { min: -35, max: 20, ticks: { font: { size: 10 }, callback: v => (v > 0 ? '+' : '') + v + '%' } }, v => (v > 0 ? '+' : '') + v + '% vs seasonal norm');
+
+/* ============ PREDICTIVE SKILL: COMPUTED BACKTESTS ============ */
+/* Each rule emits +1 (predict target up next month), -1 (down) or 0 (no signal) using only
+   data available at month t. A hit = sign(target[t+1] - target[t]) matches the signal.
+   Bars = rolling 12-month hit rate over signal months (min 3 signals in window). */
+
+function backtest(target, signalFn) {
+  const n = target.length;
+  const hits = new Array(n).fill(null); /* 1 hit, 0 miss, null no signal */
+  for (let t = 2; t < n - 1; t++) {
+    const s = signalFn(t);
+    if (s === 0) continue;
+    const move = target[t + 1] - target[t];
+    if (move === 0) continue;
+    hits[t] = (Math.sign(move) === s) ? 1 : 0;
+  }
+  const rolling = new Array(n).fill(null);
+  for (let t = 12; t < n; t++) {
+    let h = 0, c = 0;
+    for (let k = t - 11; k <= t; k++) { if (hits[k] !== null) { c++; h += hits[k]; } }
+    if (c >= 3) rolling[t] = Math.round(h / c * 100);
+  }
+  let H = 0, C = 0;
+  hits.forEach(v => { if (v !== null) { C++; H += v; } });
+  return { rolling: rolling, overall: C > 0 ? Math.round(H / C * 100) : null, signals: C };
+}
+
+/* Decision rules (real-data indicators only; commercial-feed indicators carry no skill panel) */
+const btPDI  = backtest(mBrent, t => { const d = mPDI[t] - mPDI[t-2]; return d >= 3 ? 1 : (d <= -3 ? -1 : 0); });
+const btRR   = backtest(mBrent, t => { if (mRR[t] >= 0.9) return 0; const d = mRR[t] - mRR[t-1]; return d < 0 ? 1 : (d > 0 ? -1 : 1); });
+const btII   = backtest(mBrent, t => { const d = mIIus[t] - mIIus[t-2]; return d > 0.05 ? 1 : (d < -0.05 ? -1 : 0); });
+const btGPDI = backtest(mTTF,   t => { const d = mGPDI[t] - mGPDI[t-2]; return d >= 10 ? 1 : (d <= -10 ? -1 : 0); });
+const btGPR  = backtest(mBrent, t => { if (mGPR[t] < 150) return 0; const d = mGPR[t] - mGPR[t-1]; return d > 0 ? 1 : (d < 0 ? -1 : 0); });
+const btSTO  = backtest(mTTF,   t => { if (mSTO[t] > -5) return 0; const d = mSTO[t] - mSTO[t-1]; return d < 0 ? 1 : (d > 0 ? -1 : 0); });
+
+function setHeadline(id, bt) {
+  const el = document.getElementById(id);
+  if (!el || bt.overall === null) return;
+  el.textContent = bt.overall + '%';
+  el.className = 'sk-val ' + (bt.overall >= 70 ? 'sk-strong' : (bt.overall >= 55 ? 'sk-mid' : 'sk-weak'));
+  el.title = 'Overall hit rate across ' + bt.signals + ' signal months (Jul 2021 - Jul 2026)';
+}
+
+function skillChart(id, bt) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  try {
+    new Chart(el, {
+      type: 'bar',
+      data: {
+        labels: mLabels,
+        datasets: [{
+          label: 'Rolling 12-month hit rate',
+          data: bt.rolling,
+          backgroundColor: bt.rolling.map(v => v === null ? 'rgba(0,0,0,0)' : (v >= 70 ? 'rgba(30,142,90,0.75)' : (v >= 55 ? 'rgba(248,169,58,0.75)' : 'rgba(140,140,140,0.55)'))),
+          borderWidth: 0,
+          barPercentage: 0.9, categoryPercentage: 0.95
+        },{
+          type: 'line', label: 'No-skill line (50%)',
+          data: mLabels.map(() => 50),
+          borderColor: '#c0392b', borderDash: [4,4], pointRadius: 0, borderWidth: 1.2, fill: false
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: true, labels: { boxWidth: 10, font: { size: 9 } } },
+          tooltip: { callbacks: { label: ctx => ctx.datasetIndex === 0 ? (ctx.parsed.y === null ? 'No signals in window' : 'Rolling 12m hit rate ' + ctx.parsed.y + '%') : 'No-skill line: 50%' } }
+        },
+        scales: {
+          y: { min: 0, max: 100, ticks: { font: { size: 9 }, callback: v => v + '%' }, grid: { color: '#edf2f6' } },
+          x: { grid: { display: false }, ticks: { font: { size: 8 }, maxRotation: 60, minRotation: 60, autoSkip: true, maxTicksLimit: 11 } }
+        }
+      }
+    });
+  } catch(e) { console.error('Skill chart ' + id + ' failed to render:', e); }
+}
+skillChart('skill-pdi',  btPDI);  setHeadline('skval-pdi',  btPDI);
+skillChart('skill-rr',   btRR);   setHeadline('skval-rr',   btRR);
+skillChart('skill-ii',   btII);   setHeadline('skval-ii',   btII);
+skillChart('skill-gpdi', btGPDI); setHeadline('skval-gpdi', btGPDI);
+skillChart('skill-gpr',  btGPR);  setHeadline('skval-gpr',  btGPR);
+skillChart('skill-sto',  btSTO);  setHeadline('skval-sto',  btSTO);
+
+/* ============ CASE STUDY: PRICE DEVIATION INDEX (REALIZED) ============ */
+const histLabels = ['W/E 27 Feb','6 Mar','13 Mar','20 Mar','27 Mar','3 Apr','10 Apr','17 Apr','24 Apr','8 May','22 May','5 Jun','19 Jun','3 Jul','8 Jul'];
+const histBrent  = [71, 85, 100, 108, 112, 125, 136, 120, 114, 110, 104, 95, 82, 70, 78];
+const histIndex  = histBrent.map(v => Math.round(v / 71 * 100));
+try {
+  new Chart(document.getElementById('chart-brent-hist'), {
+    type: 'line',
+    data: {
+      labels: histLabels,
+      datasets: [{
+        label: 'Price Deviation Index (100 = pre-event baseline)',
+        data: histIndex,
+        borderColor: '#078b95',
+        backgroundColor: 'rgba(7,139,149,0.10)',
+        fill: true, tension: 0.35, pointRadius: 3, pointBackgroundColor: '#10395c', borderWidth: 2.5
+      },{
+        label: 'Baseline (100)',
+        data: histLabels.map(() => 100),
+        borderColor: '#8c8c8c', borderDash: [5,5], pointRadius: 0, borderWidth: 1.5, fill: false
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { boxWidth: 12, font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => ctx.datasetIndex === 0 ? 'Index ' + ctx.parsed.y + ' (Brent ~$' + histBrent[ctx.dataIndex] + ')' : 'Baseline 100' } } },
+      scales: {
+        y: { min: 80, max: 175, grid: { color: '#edf2f6' } },
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45, minRotation: 45 } }
+      }
+    }
+  });
+} catch(e) { console.error('Case study chart failed to render:', e); }
+
+/* ============ CASE STUDY: US vs EURO AREA INFLATION ============ */
+const inflLabels = ['Feb 2026','Mar 2026','Apr 2026','May 2026','Jun 2026'];
+const usCPI = [3.0, 3.3, 3.8, 4.2, null];   /* Feb approx pre-shock baseline; Jun pending (BLS release 14 Jul) */
+const eaHICP = [2.3, 2.5, 3.0, 3.2, 2.8];
+try {
+  new Chart(document.getElementById('chart-inflation'), {
+    type: 'line',
+    data: {
+      labels: inflLabels,
+      datasets: [{
+        label: 'US CPI-U, all items YoY (Jun pending)',
+        data: usCPI,
+        borderColor: '#10395c',
+        fill: false, tension: 0.3, pointRadius: 4, borderWidth: 2.5, spanGaps: false
+      },{
+        label: 'Euro area HICP YoY (flash)',
+        data: eaHICP,
+        borderColor: '#078b95',
+        fill: false, tension: 0.3, pointRadius: 4, borderWidth: 2.5
+      },{
+        label: 'ECB / Fed 2% reference',
+        data: inflLabels.map(() => 2),
+        borderColor: '#8c8c8c', borderDash: [5,5], pointRadius: 0, borderWidth: 1.5, fill: false
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { boxWidth: 12, font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => ctx.parsed.y === null ? ctx.dataset.label + ': pending' : ctx.dataset.label.split(' (')[0] + ': ' + ctx.parsed.y + '%' } } },
+      scales: {
+        y: { min: 1.5, max: 5, ticks: { callback: v => v + '%' }, grid: { color: '#edf2f6' } },
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+} catch(e) { console.error('Inflation chart failed to render:', e); }
+
+/* ============ SCENARIO ENGINE (INDEX TERMS) ============ */
+const weeks = ['Wk 1','Wk 2','Wk 3','Wk 4','Wk 5','Wk 6','Wk 7','Wk 8','Wk 8 end'];
+const pathA = [101, 100, 99, 97, 96, 94, 93, 92, 90];        /* normalization */
+const pathB = [101, 107, 104, 113, 110, 118, 114, 121, 117]; /* constrained flow */
+const pathC = [101, 120, 138, 152, 162, 158, 166, 161, 155]; /* escalation */
+let evDataset;
+
+function evPath(wA, wB, wC) {
+  const total = (wA + wB + wC) || 1;
+  return weeks.map((_, i) => Math.round((pathA[i]*wA + pathB[i]*wB + pathC[i]*wC) / total));
+}
+
+let outlookChart;
+try {
+  outlookChart = new Chart(document.getElementById('chart-outlook'), {
+    type: 'line',
+    data: {
+      labels: weeks,
+      datasets: [
+        { label: 'A · Normalization (50%)', data: pathA, borderColor: '#1e8e5a', backgroundColor: 'rgba(30,142,90,0.07)', fill: true, tension: 0.35, pointRadius: 2.5, borderWidth: 2 },
+        { label: 'B · Constrained flow (35%)', data: pathB, borderColor: '#d98a13', backgroundColor: 'rgba(248,169,58,0.07)', fill: true, tension: 0.35, pointRadius: 2.5, borderWidth: 2 },
+        { label: 'C · Escalation (15%)', data: pathC, borderColor: '#c0392b', backgroundColor: 'rgba(192,57,43,0.06)', fill: true, tension: 0.35, pointRadius: 2.5, borderWidth: 2 },
+        { label: 'Probability-weighted expectation', data: evPath(50,35,15), borderColor: '#10395c', borderDash: [7,4], pointRadius: 0, borderWidth: 3, fill: false, tension: 0.35 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { boxWidth: 12, font: { size: 11 } } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label.split(' (')[0] + ': index ' + ctx.parsed.y } } },
+      scales: {
+        y: { min: 80, max: 180, grid: { color: '#edf2f6' } },
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+  evDataset = outlookChart.data.datasets[3];
+} catch(e) { console.error('Scenario engine chart failed to render:', e); }
+
+function updateEV() {
+  const wA = +document.getElementById('pA').value;
+  const wB = +document.getElementById('pB').value;
+  const wC = +document.getElementById('pC').value;
+  const total = (wA + wB + wC) || 1;
+  const nA = Math.round(wA/total*100), nB = Math.round(wB/total*100);
+  const nC = 100 - nA - nB;
+  document.getElementById('pAv').textContent = nA + '%';
+  document.getElementById('pBv').textContent = nB + '%';
+  document.getElementById('pCv').textContent = nC + '%';
+  const path = evPath(wA, wB, wC);
+  const endpoint = path[path.length - 1];
+  document.getElementById('ev-endpoint').textContent = 'Index ' + endpoint;
+  if (outlookChart && evDataset) {
+    evDataset.data = path;
+    outlookChart.data.datasets[0].label = 'A · Normalization (' + nA + '%)';
+    outlookChart.data.datasets[1].label = 'B · Constrained flow (' + nB + '%)';
+    outlookChart.data.datasets[2].label = 'C · Escalation (' + nC + '%)';
+    outlookChart.update('none');
+  }
+}
+['pA','pB','pC'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', updateEV);
+});
+updateEV();
+</script>
+</body>
+</html>
